@@ -2,8 +2,8 @@ import * as CryptoJS from 'crypto-js';
 import { broadcastLatest } from './p2p';
 import { hexToBinary } from './util';
 
-const BLOCK_GENERATION_INTERVAL = 10; // in seconds
-const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // in blocks
+const BLOCK_GENERATION_INTERVAL = 10; // in seconds - mining - defines how often a block should be found
+const DIFFICULTY_ADJUSTMENT_INTERVAL = 10; // in blocks - mining - defines how often the difficulty should adjust to the increasing or decreasing network hashrate
 
 class Block {
 	constructor(index, hash, previousHash, timestamp, data, difficulty, nonce) {
@@ -12,8 +12,8 @@ class Block {
 		this.timestamp = timestamp;
 		this.data = data;
 		this.hash = hash;
-		this.difficulty = difficulty;
-		this.nonce = nonce;
+		this.difficulty = difficulty; // Number - Defines how many prefixing zeros the block hash must have - for the block to be valid
+		this.nonce = nonce; // Number - used for calculate different hashes for the same content of the block - for find a hash that satisfies the difficulty
 	}
 }
 
@@ -24,9 +24,17 @@ let blockchain = [genesisBlock];
 const getBlockchain = () => blockchain;
 const getLatestBlock = () => blockchain[blockchain.length - 1];
 
+/**
+ * ## Mining
+ * Get the difficulty of the last block
+ *
+ * @param {array} aBlockchain - the full blockchain
+ * @return {number} the difficulty
+ * */
 const getDifficulty = (aBlockchain) => {
 	const latestBlock = aBlockchain[blockchain.length - 1];
 
+	// For every 10 blocks that is generated, we check if the time that took to generate those blocks are larger or smaller than the expected time
 	if (latestBlock.index % DIFFICULTY_ADJUSTMENT_INTERVAL === 0 && latestBlock.index !== 0) {
 		return getAdjustedDifficulty(latestBlock, aBlockchain);
 	} else {
@@ -34,6 +42,16 @@ const getDifficulty = (aBlockchain) => {
 	}
 };
 
+/**
+ * ## Mining ajusted difficulty
+ * If blocks are mined too often, the difficulty of the puzzle will increase
+ * We increase or decrease the difficulty if the time taken is at least two times greater or smaller than the expected difficulty
+ *
+ * @param {object} latestBlock - the lastest block
+ * @param {array} aBlockchain - the full blockchain
+ *
+ * @return {number} the difficulty ajusted
+ * */
 const getAdjustedDifficulty = (latestBlock, aBlockchain) => {
 	const prevAdjustmentBlock = aBlockchain[blockchain.length - DIFFICULTY_ADJUSTMENT_INTERVAL];
 	const timeExpected = BLOCK_GENERATION_INTERVAL * DIFFICULTY_ADJUSTMENT_INTERVAL;
@@ -63,6 +81,18 @@ const generateNextBlock = (blockData) => {
 	return newBlock;
 };
 
+/**
+ * ## Mining core
+ * To find a valid block hash we must increase the 'nonce' as until we get a valid hash
+ *
+ * @param {number} index - the index of the block
+ * @param {string} previousHash - the previousHash of the block
+ * @param {number} timestamp - the timestamp of the block
+ * @param {string} data - the data of the block
+ * @param {number} difficulty - the difficulty of the block
+ *
+ * @return {array} a new block (if the hash is correct in terms of difficulty)
+ * */
 const findBlock = (index, previousHash, timestamp, data, difficulty) => {
 	let nonce = 0;
 
@@ -78,10 +108,7 @@ const findBlock = (index, previousHash, timestamp, data, difficulty) => {
 };
 
 const calculateHashForBlock = (block) => calculateHash(block.index, block.previousHash, block.timestamp, block.data, block.difficulty, block.nonce);
-
-const calculateHash = (index, previousHash, timestamp, data, difficulty, nonce) => {
-	return CryptoJS.SHA256(index + previousHash + timestamp + data + difficulty + nonce).toString();
-};
+const calculateHash = (index, previousHash, timestamp, data, difficulty, nonce) => CryptoJS.SHA256(index + previousHash + timestamp + data + difficulty + nonce).toString();
 
 const addBlock = (newBlock) => {
 	if (isValidNewBlock(newBlock, getLatestBlock())) {
@@ -122,6 +149,13 @@ const isValidNewBlock = (newBlock, previousBlock) => {
 	return true;
 };
 
+/**
+ * ## Mining
+ * Cumulate the difficulties
+ *
+ * @param {array} aBlockchain - the full blockchain
+ * @return {number}
+ * */
 const getAccumulatedDifficulty = (aBlockchain) => {
 	return aBlockchain
 		.map((block) => block.difficulty)
@@ -129,11 +163,28 @@ const getAccumulatedDifficulty = (aBlockchain) => {
 		.reduce((a, b) => a + b);
 };
 
+/**
+ * ## Mining
+ * Timestamp validation - for avoid the attacks
+ * - A block is valid, if the timestamp is at most 1 min in the future from the time we perceive
+ * - A block in the chain is valid, if the timestamp is at most 1 min in the past of the previous block.
+ *
+ * @param {object} newBlock
+ * @param {object} previousBlock
+ *
+ * @return {boolean}
+ * */
 const isValidTimestamp = (newBlock, previousBlock) => {
-	return ( previousBlock.timestamp - 60 < newBlock.timestamp )
-		&& newBlock.timestamp - 60 < getCurrentTimestamp();
+	return (previousBlock.timestamp - 60 < newBlock.timestamp) && newBlock.timestamp - 60 < getCurrentTimestamp();
 };
 
+/**
+ * ## Mining
+ * Check if the hash of the block is valid
+ *
+ * @param {object} block
+ * @return {boolean}
+ * */
 const hasValidHash = (block) => {
 	if (!hashMatchesBlockContent(block)) {
 		console.log('invalid hash, got:' + block.hash);
@@ -147,16 +198,32 @@ const hasValidHash = (block) => {
 	return true;
 };
 
+/**
+ * ## Mining
+ * Check if the hash of the block match
+ *
+ * @param {object} block
+ * @return {boolean}
+ * */
 const hashMatchesBlockContent = (block) => {
 	const blockHash = calculateHashForBlock(block);
 	return blockHash === block.hash;
 };
 
+/**
+ * ## Mining
+ * Checks that the hash is correct in terms of difficulty
+ * The prefixing zeros are checked from the binary format of the hash (example 00001001010001)
+ *
+ * @param {string} hash - the hash of block
+ * @param {number} difficulty - the difficulty of block
+ * @return {boolean}
+ * */
 const hashMatchesDifficulty = (hash, difficulty) => {
 	const hashInBinary = hexToBinary(hash);
 	const requiredPrefix = '0'.repeat(difficulty);
 
-	return hashInBinary.startsWith(requiredPrefix); // return boolean
+	return hashInBinary.startsWith(requiredPrefix);
 };
 
 /**
@@ -190,7 +257,8 @@ const addBlockToChain = (newBlock) => {
 };
 
 /**
- * For case of block's conflicts we choosing the longest cumulate difficulty
+ * The correct chain will be the longest cumulate difficulty
+ * In other words, the correct chain is the chain which required most resources (= hashRate * time) to produce
  * */
 const replaceChain = (newBlocks) => {
 	if (isValidChain(newBlocks) && getAccumulatedDifficulty(newBlocks) > getAccumulatedDifficulty(getBlockchain())) {
