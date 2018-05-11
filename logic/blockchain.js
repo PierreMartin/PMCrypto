@@ -1,5 +1,6 @@
 import * as CryptoJS from 'crypto-js';
 import { broadcastLatest } from './p2p';
+import { processTransactions } from './transaction';
 import { hexToBinary } from './util';
 
 const BLOCK_GENERATION_INTERVAL = 10; // in seconds - mining - defines how often a block should be found
@@ -17,9 +18,10 @@ class Block {
 	}
 }
 
-const genesisBlock = new Block(0, '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1465154705, 'my genesis block!!', 0, 0);
+const genesisBlock = new Block(0, '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627', '', 1465154705, [], 0, 0);
 
 let blockchain = [genesisBlock];
+let unspentTxOuts = [];
 
 const getBlockchain = () => blockchain;
 const getLatestBlock = () => blockchain[blockchain.length - 1];
@@ -71,14 +73,16 @@ const getCurrentTimestamp = () => Math.round(new Date().getTime() / 1000);
 const generateNextBlock = (blockData) => {
 	const previousBlock = getLatestBlock();
 	const difficulty = getDifficulty(getBlockchain());
-	console.log('difficulty: ' + difficulty);
 	const nextIndex = previousBlock.index + 1;
 	const nextTimestamp = getCurrentTimestamp();
 	const newBlock = findBlock(nextIndex, previousBlock.hash, nextTimestamp, blockData, difficulty);
-	addBlock(newBlock);
-	broadcastLatest();
 
-	return newBlock;
+	if(addBlockToChain(newBlock)) {
+		broadcastLatest();
+		return newBlock;
+	} else {
+		return null;
+	}
 };
 
 /**
@@ -88,7 +92,7 @@ const generateNextBlock = (blockData) => {
  * @param {number} index - the index of the block
  * @param {string} previousHash - the previousHash of the block
  * @param {number} timestamp - the timestamp of the block
- * @param {string} data - the data of the block
+ * @param {array} data - the data of the block
  * @param {number} difficulty - the difficulty of the block
  *
  * @return {array} a new block (if the hash is correct in terms of difficulty)
@@ -121,7 +125,7 @@ const isValidBlockStructure = (block) => {
 		&& typeof block.hash === 'string'
 		&& typeof block.previousHash === 'string'
 		&& typeof block.timestamp === 'number'
-		&& typeof block.data === 'string';
+		&& typeof block.data === 'object';
 };
 
 /**
@@ -130,6 +134,7 @@ const isValidBlockStructure = (block) => {
 const isValidNewBlock = (newBlock, previousBlock) => {
 	if (!isValidBlockStructure(newBlock)) {
 		console.log('invalid structure');
+		console.log(newBlock);
 		return false;
 	}
 
@@ -249,8 +254,15 @@ const isValidChain = (blockchainToValidate) => {
 
 const addBlockToChain = (newBlock) => {
 	if (isValidNewBlock(newBlock, getLatestBlock())) {
-		blockchain.push(newBlock);
-		return true;
+		const retVal = processTransactions(newBlock.data, unspentTxOuts, newBlock.index);
+
+		if (retVal === null) {
+			return false;
+		} else {
+			blockchain.push(newBlock);
+			unspentTxOuts = retVal;
+			return true;
+		}
 	}
 
 	return false;
