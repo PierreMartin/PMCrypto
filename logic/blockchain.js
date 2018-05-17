@@ -113,6 +113,9 @@ const getMyUnspentTransactionOutputs = () => {
 	return findUnspentTxOuts(getPublicFromWallet(), getUnspentTxOuts());
 };
 
+/**
+ * The unconfirmed transaction will find its way from the local transaction pool to a block mined by the same node
+ * */
 const generateNextBlock = () => {
 	const coinbaseTx = getCoinbaseTransaction(getPublicFromWallet(), getLatestBlock().index + 1);
 	const blockData = [coinbaseTx].concat(getTransactionPool());
@@ -166,6 +169,9 @@ const getAccountBalance = () => {
 	return getBalance(getPublicFromWallet(), getUnspentTxOuts());
 };
 
+/**
+ * create transaction - We add the created transaction to the pool
+ * */
 const sendTransaction = (address, amount) => {
 	const tx = createTransaction(address, amount, getPrivateFromWallet(), getUnspentTxOuts(), getTransactionPool());
 	addToTransactionPool(tx, getUnspentTxOuts());

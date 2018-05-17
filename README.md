@@ -7,6 +7,11 @@ Implementation of :
 - Transactions (Public-key cryptography and signatures)
 - Wallets
 
+Not Implemented
+- Fees
+- Private-key file no encrypted
+
+
 ```
 npm i
 npm start

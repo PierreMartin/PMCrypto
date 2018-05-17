@@ -9,7 +9,7 @@ const MessageType = {
 	QUERY_LATEST: 0,
 	QUERY_ALL: 1,
 	RESPONSE_BLOCKCHAIN: 2,
-	QUERY_TRANSACTION_POOL: 3,
+	QUERY_TRANSACTION_POOL: 3, // The unconfirmed transactions broadcast the network and eventually some node will mine the transaction to the blockchain
 	RESPONSE_TRANSACTION_POOL: 4
 };
 
@@ -79,6 +79,7 @@ const initMessageHandler = (ws) => {
 					write(ws, responseTransactionPoolMsg());
 					break;
 				case MessageType.RESPONSE_TRANSACTION_POOL:
+					// Every time we receive unconfirmed transactions, we try to add those to our transaction pool:
 					const receivedTransactions = JSONToObject(message.data);
 					if (receivedTransactions === null) {
 						console.log('invalid transaction received: %s', JSON.stringify(message.data));

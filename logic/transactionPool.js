@@ -3,13 +3,15 @@ import { validateTransaction } from './transaction';
 
 let transactionPool = [];
 
-
+/**
+ * Transaction pool is a structure that contains all of the “unconfirmed transactions” our node know
+ * */
 const getTransactionPool = () => {
 	return _.cloneDeep(transactionPool);
 };
 
 /**
- *
+ * Add transaction to the Pool
  * @param {object} tx
  * @param {array} unspentTxOuts
  * */
@@ -40,6 +42,7 @@ const hasTxIn = (txIn, unspentTxOuts) => {
 };
 
 /**
+ * We must revalidate the transaction pool every time a new block is found
  *
  * @param {array} unspentTxOuts
  * @return {boolean}
@@ -75,7 +78,8 @@ const getTxPoolIns = (aTransactionPool) => {
 };
 
 /**
- *
+ * As the peers can send us any kind of transactions, we must validate the transactions before we can add them to the transaction pool
+ * There is no way to remove a transaction from the transaction pool. The transaction pool will however be updated each time a new block is found
  * @param {object} tx
  * @param {array} aTtransactionPool
  * @return {boolean}
