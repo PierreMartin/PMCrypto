@@ -7,7 +7,7 @@ const EC = new ec('secp256k1');
 const privateKeyLocation = process.env.PRIVATE_KEY || 'node/wallet/private_key';
 
 /**
- *
+ * Get a Private key
  * @return {string}
  * */
 const getPrivateFromWallet = () => {
@@ -16,7 +16,7 @@ const getPrivateFromWallet = () => {
 };
 
 /**
- *
+ * Get a Public key (=address)
  * @return {string}
  * */
 const getPublicFromWallet = () => {
@@ -26,7 +26,7 @@ const getPublicFromWallet = () => {
 };
 
 /**
- *
+ * Create a Private key
  * @return {string}
  * */
 const generatePrivateKey = () => {
@@ -35,7 +35,10 @@ const generatePrivateKey = () => {
 	return privateKey.toString(16);
 };
 
-
+/**
+ * Only one wallet by user
+ * @return {void}
+ * */
 const initWallet = () => {
 	// let's not override existing private keys
 	if (existsSync(privateKeyLocation)) {
@@ -55,7 +58,7 @@ const deleteWallet = () => {
 };
 
 /**
- *
+ * Get the amount of a address
  * @param {string} address
  * @param {array} unspentTxOuts
  * @return {number}
@@ -77,6 +80,7 @@ const findUnspentTxOuts = (ownerAddress, unspentTxOuts) => {
 };
 
 /**
+ * Generating transactions - create the transaction inputs
  *
  * @param {number} amount
  * @param {array} myUnspentTxOuts
@@ -91,7 +95,7 @@ const findTxOutsForAmount = (amount, myUnspentTxOuts) => {
 		currentAmount = currentAmount + myUnspentTxOut.amount;
 
 		if (currentAmount >= amount) {
-			const leftOverAmount = currentAmount - amount;
+			const leftOverAmount = currentAmount - amount; // the value to send back to our address
 			return { includedUnspentTxOuts, leftOverAmount };
 		}
 	}

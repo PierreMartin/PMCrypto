@@ -49,6 +49,7 @@ const initHttpServer = (myHttpPort) => {
 		res.send(getMyUnspentTransactionOutputs());
 	});
 
+	// mine - include a transaction in the blockchain with more than 2 outputs:
 	app.post('/mineRawBlock', (req, res) => {
 		if (req.body.data == null) {
 			res.send('data parameter is missing');
@@ -62,6 +63,7 @@ const initHttpServer = (myHttpPort) => {
 		}
 	});
 
+	// mine - include a transaction in the blockchain:
 	app.post('/mineBlock', (req, res) => {
 		const newBlock = generateNextBlock();
 		if (newBlock === null) {
@@ -81,6 +83,7 @@ const initHttpServer = (myHttpPort) => {
 		res.send({'address': address});
 	});
 
+	// Using the wallet:
 	app.post('/mineTransaction', (req, res) => {
 		const address = req.body.address;
 		const amount = req.body.amount;
